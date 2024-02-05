@@ -1,4 +1,4 @@
-
+hola
 
 
 install.packages("sf")
@@ -436,14 +436,13 @@ plot(usa2)
 
 
 dir.create(path = "recent")
-dir.create(path = "output")
 dir.create(path = "año50")
 dir.create(path = "año70")
-install.packages("predicts")
+
 
 library(terra)
 library(geodata)
-library(predicts)
+
 
 #esto si
 #extracts recent data form bioclim average temp 
@@ -550,14 +549,14 @@ presence$pa <- 1
 head(presence)
 
 #esto si
-bioclim_extract <- extract(x = bioclim_data,
+bioclim_extract <- raster::extract(x = bioclim_data,
                            y = presence[, c("longitude", "latitude")],
                            ID = FALSE) # No need for an ID column
 
 
 
 #esto no 
-bioclim_extract_2 <- extract(x = bioclim_data_2,
+bioclim_extract_2 <- raster::extract(x = bioclim_data_2,
                            y = presence[, c("longitude", "latitude")],
                            ID = FALSE) # No need for an ID column
 
@@ -610,3 +609,447 @@ rc<-crop(bioclim_data_2, kk)
 
 latitude = c(35.89177,35.66645)
 longitude = c(-79.0181,-78.493247)
+
+
+
+
+
+
+
+
+
+
+
+
+#####################################3##
+
+##useful
+#para saber que tipo de objeto es 
+#print(paste("class of x is : ",class(bioclim_data_tmax50))) 
+
+
+#recent: 1970-2000 (12 files each for one month of the year)
+#50: 2041-2060 
+#70: 2061-2080
+
+
+dir.create(path = "recent")
+dir.create(path = "año50")
+dir.create(path = "año70")
+
+library(terra)
+library(geodata)
+
+
+#extracts recent data form bioclim average temp
+bioclim_data_recent <- worldclim_global(var = "tavg",
+                                 res = 2.5,
+                                 path = "recent/")
+
+
+#extracts projected (years 2041-2060, 2061-2080) data (tmin and tmax) from bioclim 
+bioclim_data_tmin50<-raster::getData(name = 'CMIP5', var = 'tmin', res = 10, rcp = 45, model = 'IP', year = 50,path="año50/")
+bioclim_data_tmax50<-raster::getData(name = 'CMIP5', var = 'tmax', res = 10, rcp = 45, model = 'IP', year = 50, path="año50/")
+
+bioclim_data_tmin70<-raster::getData(name = 'CMIP5', var = 'tmin', res = 10, rcp = 45, model = 'IP', year = 70,path="año70/")
+bioclim_data_tmax70<-raster::getData(name = 'CMIP5', var = 'tmax', res = 10, rcp = 45, model = 'IP', year = 70, path="año70/")
+
+
+#lats and longs from farm and research center in NC
+{
+latitude = c(35.89177,35.66645)
+longitude = c(-79.0181,-78.493247)
+
+
+#to expand the map 
+max_lat<-latitude[1]+(latitude[1]*0.05)
+min_lat<-latitude[2]-(latitude[2]*0.05)
+max_lon<-longitude[1]-(longitude[1]*0.05)
+min_lon<-longitude[2]+(longitude[2]*0.05)
+
+
+#dataframe que conecta con los 4 puntos 
+geographic_extent <- ext(x = c(min_lon, max_lon, min_lat, max_lat))
+
+
+#Download data with geodata's world function to use for our base map
+world_map <- world(resolution = 3,
+                   path = "data/")
+
+
+# Crop the map to our area of interest
+my_map <- crop(x = world_map, y = geographic_extent)
+
+
+# Plot the base map
+plot(my_map,
+     axes = TRUE, 
+     col = "grey95")
+}
+
+#Convert rasterstack to spatraster to be able to crop it (only for CMIP5)
+bioclim_data_tmax50<-as(bioclim_data_tmax50, "SpatRaster")
+bioclim_data_tmin50<-as(bioclim_data_tmin50, "SpatRaster")
+#unir los dos spatraster en mean 
+bioclim_data_tavg50<-mean(bioclim_data_tmax50,bioclim_data_tmin50, na.rm=FALSE)
+
+
+# Crop bioclim data to desired extent
+bioclim_data_recent <- crop(x = bioclim_data_recent, y = geographic_extent)
+bioclim_data_tavg50 <- crop(x = bioclim_data_tavg50, y = geographic_extent)
+
+#quitar
+bioclim_data_tmax50 <- crop(x = bioclim_data_tmax50, y = geographic_extent)
+bioclim_data_tmin50 <- crop(x = bioclim_data_tmin50, y = geographic_extent)
+
+#prueba
+bioclim_meanspat <- crop(x = meanspat, y = geographic_extent)
+
+
+
+
+#PLOTS FOR RECENT AVG TEMPS
+{#https://www.benjaminbell.co.uk/2018/01/extracting-data-and-making-climate-maps.html
+
+#sets matrix space for the 12 months
+layout(matrix(1:12, nrow=3,ncol=4, byrow=TRUE)) # Set up plot layout
+
+i=0 #counter for extracting bioclim for each month
+months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+for (x in months){
+  i=i+1
+  par(mar=c(4, 4, 4, 4)) # Set margin
+  
+  plot(bioclim_data_recent[[i]])
+  title(main=paste0("Mean ",x," Temperatures\n(1970 - 2000)"))
+  place<-c("Farms","Research")
+  text(longitude, latitude, labels=place, pos=2, cex=0.5)
+  points(x = longitude, 
+         y = latitude, 
+         col = "red", 
+         pch = 20, 
+         cex = 1)
+}
+}
+
+
+
+#PLOTS FOR projections min&max TEMPS
+
+#es igual una .tif por cada mes 
+#buscar como hacer avg de min y max 
+#plot the projected temps
+#sacar un avg 
+plot(bioclim_meanspat)
+plot(bioclim_data_tavg50)
+ 
+points(x = longitude, 
+       y = latitude, 
+       col = "red", 
+       pch = 20, 
+       cex = 1)
+
+
+
+
+
+
+
+
+##DATOS EN DFs
+
+#df de longs y lats 
+presence<-data.frame(longitude,latitude)
+
+
+#Extracts climate info with the coordinate sets and converts SPATRASTER to dataframe
+bioclim_extract_recent <- raster::extract(x = bioclim_data_recent,
+                           y = presence[, c("longitude", "latitude")],
+                           ID = FALSE) 
+bioclim_extract_tavg50 <- raster::extract(x = bioclim_data_tavg50,
+                                          y = presence[, c("longitude", "latitude")],
+                                          ID = FALSE) 
+
+
+
+bioclim_extract_tmax50 <- raster::extract(x = bioclim_data_tmax50,
+                           y = presence[, c("longitude", "latitude")],
+                           ID = FALSE) 
+bioclim_extract_tmin50 <- raster::extract(x = bioclim_data_tmin50,
+                           y = presence[, c("longitude", "latitude")],
+                           ID = FALSE) 
+
+
+
+#prueba
+bioclim_extract_meanspat <- raster::extract(x = bioclim_meanspat,
+                                  y = presence[, c("longitude", "latitude")],
+                                  ID = FALSE) 
+
+#une tabla de lats y longs con sus datos de clima
+points_climate_recent <- cbind(presence, bioclim_extract)
+points_climate_tavg50 <- cbind(presence, bioclim_extract_tavg50)
+
+
+points_climate_tmax50 <- cbind(presence, bioclim_extract_tmax50)
+points_climate_tmin50 <- cbind(presence, bioclim_extract_tmin50)
+
+#prueba
+points_climate_meanspat <- cbind(presence, bioclim_extract_meanspat)
+
+
+#une los dfs de tmin y tmax
+library(data.table)
+new<-rbindlist(list(points_climate_tmax50,points_climate_tmin50),use.names=FALSE)[,lapply(.SD,mean), list(longitude, latitude)]
+
+
+
+
+
+
+
+
+
+
+###errores
+
+dir.create(path = "data")
+dir.create(path = "output")
+
+bioclim_data <- worldclim_global(var = "bio",
+                                 res = 2.5,
+                                 path = "data/")
+
+
+
+max_lat<-latitude[1]+(latitude[1]*0.05)
+min_lat<-latitude[2]-(latitude[2]*0.05)
+max_lon<-longitude[1]-(longitude[1]*0.05)
+min_lon<-longitude[2]+(longitude[2]*0.05)
+
+geographic_extent <- ext(x = c(min_lon, max_lon, min_lat, max_lat))
+
+world_map <- world(resolution = 3,
+                   path = "data/")
+
+# Crop the map to our area of interest
+my_map <- crop(x = world_map, y = geographic_extent)
+
+# Plot the base map
+plot(my_map,
+     axes = TRUE, 
+     col = "grey95")
+
+# Add the points for individual observations
+points(x = longitude, 
+       y = latitude, 
+       col = "olivedrab", 
+       pch = 20, 
+       cex = 0.75)
+
+bioclim_data <- crop(x = bioclim_data, y = geographic_extent)
+plot(bioclim_data[[1]])
+
+presence <- data.frame(longitude, latitude)
+# Add column indicating presence
+presence$pa <- 1
+head(presence)
+
+bioclim_extract <- extract(x = bioclim_data,
+                           y = presence[, c("longitude", "latitude")],
+                           ID = FALSE) # No need for an ID column
+
+
+
+
+
+#############################
+#############################
+#############################
+#https://rdrr.io/github/rspatial/geodata/man/cmip6.html
+#ssp 126, 245, 370
+#model 
+#restar future -recent y plottear la diferencia 
+#tratar de necontrar datos específicos de 2010 y 2024 
+
+
+
+##useful
+#para saber que tipo de objeto es 
+#print(paste("class of x is : ",class(bioclim_data_tmax50))) 
+
+
+#recent: 1970-2000 (12 files each for one month of the year)
+#50: 2041-2060 
+#70: 2061-2080
+
+
+dir.create(path = "recent")
+dir.create(path = "año50")
+dir.create(path = "año70")
+
+library(terra)
+library(geodata)
+
+
+#extracts recent data form bioclim average temp
+bioclim_data_recent <- worldclim_global(var = "tavg",
+                                        res = 2.5,
+                                        path = "recent/")
+
+
+#extracts projected (years 2041-2060, 2061-2080) data (tmin and tmax) from bioclim 
+bioclim_data_tmin50<-raster::getData(name = 'CMIP5', var = 'tmin', res = 10, rcp = 45, model = 'IP', year = 50,path="año50/")
+bioclim_data_tmax50<-raster::getData(name = 'CMIP5', var = 'tmax', res = 10, rcp = 45, model = 'IP', year = 50, path="año50/")
+
+bioclim_data_tmin70<-raster::getData(name = 'CMIP5', var = 'tmin', res = 10, rcp = 45, model = 'IP', year = 70,path="año70/")
+bioclim_data_tmax70<-raster::getData(name = 'CMIP5', var = 'tmax', res = 10, rcp = 45, model = 'IP', year = 70, path="año70/")
+
+
+#lats and longs from farm and research center in NC
+{
+  latitude = c(35.89177,35.66645)
+  longitude = c(-79.0181,-78.493247)
+  
+  
+  #to expand the map 
+  max_lat<-latitude[1]+(latitude[1]*0.05)
+  min_lat<-latitude[2]-(latitude[2]*0.05)
+  max_lon<-longitude[1]-(longitude[1]*0.05)
+  min_lon<-longitude[2]+(longitude[2]*0.05)
+  
+  
+  #dataframe que conecta con los 4 puntos 
+  geographic_extent <- ext(x = c(min_lon, max_lon, min_lat, max_lat))
+  
+  
+  #Download data with geodata's world function to use for our base map
+  world_map <- world(resolution = 3,
+                     path = "data/")
+  
+  
+  # Crop the map to our area of interest
+  my_map <- crop(x = world_map, y = geographic_extent)
+  
+}
+
+
+#Convert rasterstack to spatraster to be able to crop it (only for CMIP5)
+bioclim_data_tmax50<-as(bioclim_data_tmax50, "SpatRaster")
+bioclim_data_tmin50<-as(bioclim_data_tmin50, "SpatRaster")
+
+bioclim_data_tmax70<-as(bioclim_data_tmax70, "SpatRaster")
+bioclim_data_tmin70<-as(bioclim_data_tmin70, "SpatRaster")
+
+
+#unir los dos spatraster en mean 
+bioclim_data_tavg50<-mean(bioclim_data_tmax50,bioclim_data_tmin50, na.rm=FALSE)
+bioclim_data_tavg70<-mean(bioclim_data_tmax70,bioclim_data_tmin70, na.rm=FALSE)
+
+
+# Crop bioclim data to desired extent
+bioclim_data_recent <- crop(x = bioclim_data_recent, y = geographic_extent)
+bioclim_data_tavg50 <- crop(x = bioclim_data_tavg50, y = geographic_extent)
+bioclim_data_tavg70 <- crop(x = bioclim_data_tavg70, y = geographic_extent)
+
+
+
+#PLOTS FOR RECENT AVG TEMPS
+{#https://www.benjaminbell.co.uk/2018/01/extracting-data-and-making-climate-maps.html
+  
+  #sets matrix space for the 12 months
+  layout(matrix(1:12, nrow=3,ncol=4, byrow=TRUE)) # Set up plot layout
+  
+  i=0 #counter for extracting bioclim for each month
+  months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+  for (x in months){
+    i=i+1
+    par(mar=c(4, 4, 4, 4)) # Set margin
+    
+    plot(bioclim_data_recent[[i]])
+    title(main=paste0("Mean ",x," Temperatures\n(1970 - 2000)"))
+    place<-c("Farms","Research")
+    text(longitude, latitude, labels=place, pos=2, cex=0.75)
+    points(x = longitude, 
+           y = latitude, 
+           col = "red", 
+           pch = 20, 
+           cex = 1)
+  }
+}
+
+#PLOT FOR TAVG PROJECTED 2041-2060
+{#https://www.benjaminbell.co.uk/2018/01/extracting-data-and-making-climate-maps.html
+  
+  #sets matrix space for the 12 months
+  layout(matrix(1:12, nrow=3,ncol=4, byrow=TRUE)) # Set up plot layout
+  
+  i=0 #counter for extracting bioclim for each month
+  months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+  for (x in months){
+    i=i+1
+    par(mar=c(4, 4, 4, 4)) # Set margin
+    
+    plot(bioclim_data_tavg50[[i]])
+    title(main=paste0("Mean ",x," Temperatures\n(2041 - 2060)"))
+    place<-c("Farms","Research")
+    text(longitude, latitude, labels=place, pos=2, cex=0.5)
+    points(x = longitude, 
+           y = latitude, 
+           col = "red", 
+           pch = 20, 
+           cex = 1)
+  }
+}
+
+#PLOT FOR TAVG PROJECTED 2061-2080
+{#https://www.benjaminbell.co.uk/2018/01/extracting-data-and-making-climate-maps.html
+  
+  #sets matrix space for the 12 months
+  layout(matrix(1:12, nrow=3,ncol=4, byrow=TRUE)) # Set up plot layout
+  
+  i=0 #counter for extracting bioclim for each month
+  months=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+  for (x in months){
+    i=i+1
+    par(mar=c(4, 4, 4, 4)) # Set margin
+    
+    plot(bioclim_data_tavg70[[i]])
+    title(main=paste0("Mean ",x," Temperatures\n(2061 - 2080)"))
+    place<-c("Farms","Research")
+    text(longitude, latitude, labels=place, pos=2, cex=0.5)
+    points(x = longitude, 
+           y = latitude, 
+           col = "red", 
+           pch = 20, 
+           cex = 1)
+  }
+}
+
+
+##DATOS EN DFs
+
+#df de longs y lats 
+presence<-data.frame(longitude,latitude)
+
+
+#Extracts climate info with the coordinate sets and converts SPATRASTER to dataframe
+bioclim_extract_recent <- raster::extract(x = bioclim_data_recent,
+                                          y = presence[, c("longitude", "latitude")],
+                                          ID = FALSE) 
+bioclim_extract_tavg50 <- raster::extract(x = bioclim_data_tavg50,
+                                          y = presence[, c("longitude", "latitude")],
+                                          ID = FALSE) 
+bioclim_extract_tavg70 <- raster::extract(x = bioclim_data_tavg70,
+                                          y = presence[, c("longitude", "latitude")],
+                                          ID = FALSE)
+
+
+
+
+#une tabla de lats y longs con sus datos de clima
+points_climate_recent <- cbind(presence, bioclim_extract_recent)
+points_climate_tavg50 <- cbind(presence, bioclim_extract_tavg50)
+points_climate_tavg70 <- cbind(presence, bioclim_extract_tavg70)
+
+
