@@ -1,27 +1,19 @@
+#worldclim
+#Natalia Said
+#06/02/2024
+#script downloads data form worldclim for recent (1970-2000) and future (2021-2080) projections. 
+  #it plots temperature in the wanted section with longs and lats provided. Finally it also delivers dataframe with temperatures.
 
-#############################
-#############################
-#############################
-#https://rdrr.io/github/rspatial/geodata/man/cmip6.html
-#ssp 126, 245, 370
-#model 
-#restar future -recent y plottear la diferencia 
+
+#useful: https://rdrr.io/github/rspatial/geodata/man/cmip6.html
 #tratar de necontrar datos específicos de 2010 y 2024 
-
-##useful
-#para saber que tipo de objeto es 
-#print(paste("class of x is : ",class(bioclim_data_tmax50))) 
-
-#recent: 1970-2000 (12 files each for one month of the year)
-#2021-2040", "2041-2060", or "2061-2080"
-
 
 library(terra)
 library(geodata)
 
 
 
-#extracts recent data form bioclim average temp
+#extracts recent data form bioclim average temp. 1970-2000 (12 files each for one month of the year)
 bioclim_1970 <- worldclim_global(var = "tavg", res = 2.5, path = "1970_2000/")
 
 #2021-2040", "2041-2060", & "2061-2080"
@@ -74,7 +66,7 @@ plot(aumento_40_años)
 }
 
 
-#juntar todos en un plot para 1970                 
+                
 #PLOT FOR TAVG RECENT 1970-2000
 { plot(bioclim_1970[[1]])
   title(main=paste0("Mean Temperature\n(1970 - 2000)"))
