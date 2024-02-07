@@ -8,19 +8,12 @@
 #restar future -recent y plottear la diferencia 
 #tratar de necontrar datos específicos de 2010 y 2024 
 
-
-
 ##useful
 #para saber que tipo de objeto es 
 #print(paste("class of x is : ",class(bioclim_data_tmax50))) 
 
-
 #recent: 1970-2000 (12 files each for one month of the year)
 #2021-2040", "2041-2060", or "2061-2080"
-
-#dir.create(path = "recent")
-#dir.create(path = "año50")
-#dir.create(path = "año70")
 
 
 library(terra)
@@ -70,6 +63,16 @@ bioclim_1970<- crop(x = bioclim_1970, y = geographic_extent)
 forecast_21<-crop(x = forecast_21, y = geographic_extent)
 forecast_41<-crop(x = forecast_41, y = geographic_extent)
 forecast_61<-crop(x = forecast_61, y = geographic_extent)
+
+#mean of bioclim_1970 for the 12 months, produces only one graph
+{promedio<-mean(bioclim_1970, na.rm=FALSE)
+
+aumento_40_años<-forecast_41[[1]]-promedio
+aumento_20_años<-forecast_41-forecast_21
+
+plot(aumento_40_años)
+}
+
 
 #juntar todos en un plot para 1970                 
 #PLOT FOR TAVG RECENT 1970-2000
