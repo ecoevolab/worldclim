@@ -4,7 +4,7 @@
 #script downloads data form worldclim for recent (1970-2000) and future (2021-2080) projections. 
   #it plots temperature in the wanted section with longs and lats provided. Finally it also delivers dataframe with temperatures.
 
-
+ 
 #useful: https://rdrr.io/github/rspatial/geodata/man/cmip6.html
 #tratar de necontrar datos específicos de 2010 y 2024 
 
@@ -57,18 +57,19 @@ forecast_41<-crop(x = forecast_41, y = geographic_extent)
 forecast_61<-crop(x = forecast_61, y = geographic_extent)
 
 #mean of bioclim_1970 for the 12 months, produces only one graph
-{promedio<-mean(bioclim_1970, na.rm=FALSE)
+bioclim_1970<-mean(bioclim_1970, na.rm=FALSE)
 
-aumento_40_años<-forecast_41[[1]]-promedio
+#increases/decresases
+{
+aumento_40_años<-forecast_41[[1]]-bioclim_1970
 aumento_20_años<-forecast_41-forecast_21
 
 plot(aumento_40_años)
 }
 
 
-                
 #PLOT FOR TAVG RECENT 1970-2000
-{ plot(bioclim_1970[[1]])
+{ plot(bioclim_1970)
   title(main=paste0("Mean Temperature\n(1970 - 2000)"))
   place<-c("Farms","Research")
   text(longitude, latitude, labels=place, pos=2, cex=0.75)
@@ -124,7 +125,7 @@ bioclim_forecast_61 <- terra::extract(x = forecast_61, y = presence[, c("longitu
 
 #une tabla de lats y longs con sus datos de clima
 bioclim_recent_1970 <- cbind(presence, bioclim_recent_1970)
-bioclim_forecast_21 <- cbind(presence, bioclim_forecast_21)
-bioclim_forecast_41 <- cbind(presence, bioclim_forecast_41)
-bioclim_forecast_61 <- cbind(presence, bioclim_forecast_61)
+bioclim_forecast_21 <- cbind(presence, bioclim_forecast_21[2])
+bioclim_forecast_41 <- cbind(presence, bioclim_forecast_41[2])
+bioclim_forecast_61 <- cbind(presence, bioclim_forecast_61[2])
 
