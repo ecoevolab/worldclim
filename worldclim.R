@@ -1,131 +1,74 @@
 #worldclim
 #Natalia Said
 #06/02/2024
-#script downloads data form worldclim for recent (1970-2000) and future (2021-2080) projections. 
-  #it plots temperature in the wanted section with longs and lats provided. Finally it also delivers dataframe with temperatures.
+#script downloads data form worldclim for future (2021-2080) projections. 
+  #It delivers dataframe with temperatures from each year.
+  #update:with function it can "loop" through the different models, old scirpt in basura folder. Plots deltaT depending on year and location comparing it to old data 1970-2000
 
- 
-#useful: https://rdrr.io/github/rspatial/geodata/man/cmip6.html
-#tratar de necontrar datos específicos de 2010 y 2024 
+
 
 library(terra)
 library(geodata)
+library(ggplot2)
+library(reshape2)
+library(dplyr)
 
+dir.create(path = "data")
 
-
-#extracts recent data form bioclim average temp. 1970-2000 (12 files each for one month of the year)
-bioclim_1970 <- worldclim_global(var = "tavg", res = 2.5, path = "1970_2000/")
-
-#2021-2040", "2041-2060", & "2061-2080"
-forecast_21<-cmip6_world(model = "MPI-ESM1-2-HR", ssp= 245, time="2021-2040", var="bioc", res=2.5, path = "2021_2040/")
-forecast_41<-cmip6_world(model = "MPI-ESM1-2-HR", ssp= 245, time="2041-2060", var="bioc", res=2.5, path = "2041_2060/")
-forecast_61<-cmip6_world(model = "MPI-ESM1-2-HR", ssp= 245, time="2061-2080", var="bioc", res=2.5, path = "2061_2080/")
-
-
-#lats and longs from farm and research center in NC
-{
-  latitude = c(35.89177,35.66645)
-  longitude = c(-79.0181,-78.493247)
-  
-  
-  #to expand the map 
-  max_lat<-latitude[1]+(latitude[1]*0.05)
-  min_lat<-latitude[2]-(latitude[2]*0.05)
-  max_lon<-longitude[1]-(longitude[1]*0.05)
-  min_lon<-longitude[2]+(longitude[2]*0.05)
-  
-  
-  #dataframe que conecta con los 4 puntos 
-  geographic_extent <- ext(x = c(min_lon, max_lon, min_lat, max_lat))
-  
-  
-  #Download data with geodata's world function to use for our base map
-  world_map <- world(resolution = 3,
-                     path = "data/")
-  
-  
-  # Crop the map to our area of interest
-  my_map <- crop(x = world_map, y = geographic_extent)
-  
-}
-
-
-# Crop bioclim data to desired extent
-bioclim_1970<- crop(x = bioclim_1970, y = geographic_extent)
-forecast_21<-crop(x = forecast_21, y = geographic_extent)
-forecast_41<-crop(x = forecast_41, y = geographic_extent)
-forecast_61<-crop(x = forecast_61, y = geographic_extent)
-
-#mean of bioclim_1970 for the 12 months, produces only one graph
-bioclim_1970<-mean(bioclim_1970, na.rm=FALSE)
-
-#increases/decresases
-{
-aumento_40_años<-forecast_41[[1]]-bioclim_1970
-aumento_20_años<-forecast_41-forecast_21
-
-plot(aumento_40_años)
-}
-
-
-#PLOT FOR TAVG RECENT 1970-2000
-{ plot(bioclim_1970)
-  title(main=paste0("Mean Temperature\n(1970 - 2000)"))
-  place<-c("Farms","Research")
-  text(longitude, latitude, labels=place, pos=2, cex=0.75)
-  points(x = longitude, 
-         y = latitude, 
-         col = "red", 
-         pch = 20, 
-         cex = 1)
-}
-#PLOT FOR TAVG PROJECTED 2021-2040
-{plot(forecast_21[[1]])
-title(main=paste0("Mean Temperature\n(2021 - 2040)"))
-place<-c("Farms","Research")
-text(longitude, latitude, labels=place, pos=2, cex=0.75)
-points(x = longitude, 
-       y = latitude, 
-       col = "red", 
-       pch = 20, 
-       cex = 1)
-}
-#PLOT FOR TAVG PROJECTED 2041-2060
-{plot(forecast_41[[1]])
-title(main=paste0("Mean Temperature\n(2041 - 2060)"))
-place<-c("Farms","Research")
-text(longitude, latitude, labels=place, pos=2, cex=0.75)
-points(x = longitude, 
-       y = latitude, 
-       col = "red", 
-       pch = 20, 
-       cex = 1)
-}
-#PLOT FOR TAVG PROJECTED 2061-2080
-{plot(forecast_61[[1]])
-title(main=paste0("Mean Temperature\n(2061 - 2080)"))
-place<-c("Farms","Research")
-text(longitude, latitude, labels=place, pos=2, cex=0.75)
-points(x = longitude, 
-       y = latitude, 
-       col = "red", 
-       pch = 20, 
-       cex = 1)
-}
-
-
-#df de longs y lats 
+#set latitude and longitude of desired coordinates
+latitude = c(35.89177,35.66645)
+longitude = c(-79.0181,-78.493247)
 presence<-data.frame(longitude,latitude)
 
-#Extracts climate info with the coordinate sets and converts SPATRASTER to dataframe
-bioclim_recent_1970 <- terra::extract(x = bioclim_1970, y = presence[, c("longitude", "latitude")]) 
-bioclim_forecast_21 <- terra::extract(x = forecast_21, y = presence[, c("longitude", "latitude")]) 
-bioclim_forecast_41 <- terra::extract(x = forecast_41, y = presence[, c("longitude", "latitude")]) 
-bioclim_forecast_61 <- terra::extract(x = forecast_61, y = presence[, c("longitude", "latitude")]) 
+#fxn que produce df con lats, longs y avg temp given the model,ssp and time range 
+worldclim_fxn <- function(model, time_range, ssp) {
+  
+    path=paste("data/",model) #name of paths 
+    forecast<-cmip6_world(model, ssp, time_range, var="bioc", res=2.5, path)
+    
+    latitude = c(35.89177,35.66645)
+    longitude = c(-79.0181,-78.493247)
+    presence<-data.frame(longitude,latitude)
+    
+    forecast <- terra::extract(x = forecast, y = presence[, c("longitude", "latitude")]) 
+    forecast<-forecast[2]
+    return (forecast) 
+  }
 
-#une tabla de lats y longs con sus datos de clima
-bioclim_recent_1970 <- cbind(presence, bioclim_recent_1970)
-bioclim_forecast_21 <- cbind(presence, bioclim_forecast_21[2])
-bioclim_forecast_41 <- cbind(presence, bioclim_forecast_41[2])
-bioclim_forecast_61 <- cbind(presence, bioclim_forecast_61[2])
+#setting variable with past data (1970-2000) for further comparison 
+bioclim_data <- worldclim_global(var = "tavg", res = 2.5, path = "data/1970")
+bioclim_1970<-mean(bioclim_data, na.rm=FALSE)
+bioclim_1970 <- terra::extract(x = bioclim_1970, y = presence[, c("longitude", "latitude")]) 
+
+
+#models available in cmip6, model "GFDL-ESM4" crashea 
+models<-c("ACCESS-CM2","ACCESS-ESM1-5", "AWI-CM-1-1-MR", "BCC-CSM2-MR", "CanESM5", "CanESM5-CanOE", "CMCC-ESM2", "CNRM-CM6-1", "CNRM-CM6-1-HR", "CNRM-ESM2-1", "EC-Earth3-Veg", "EC-Earth3-Veg-LR", "FIO-ESM-2-0", "GISS-E2-1-G", "GISS-E2-1-H", "HadGEM3-GC31-LL", "INM-CM4-8", "INM-CM5-0", "IPSL-CM6A-LR", "MIROC-ES2L", "MIROC6", "MPI-ESM1-2-HR", "MPI-ESM1-2-LR", "MRI-ESM2-0", "UKESM1-0-LL") 
+
+
+#like a for loop that applies all the models in the vector to the fxn, https://www.statology.org/r-lapply-multiple-arguments/
+forecast_2021<-data.frame(lapply(models, worldclim_fxn, time_range="2021-2040", ssp="245")); colnames(forecast_2021)<-models
+forecast_2041<-data.frame(lapply(models, worldclim_fxn, time_range="2041-2060", ssp="245")); colnames(forecast_2041)<-models
+forecast_2061<-data.frame(lapply(models, worldclim_fxn, time_range="2061-2080", ssp="245")); colnames(forecast_2061)<-models
+
+
+#resta del future projections con el past data (1970-2000); mete dos nuevas columnas ubicación y año 
+forecast_2021<-forecast_2021[,]-bioclim_1970[,2]; forecast_2021$year<-"2021-2040"; forecast_2021$ubi<-c("Mason Farm", "Central Crops Research Station")
+forecast_2041<-forecast_2041[,]-bioclim_1970[,2]; forecast_2041$year<-"2041-2060"; forecast_2041$ubi<-c("Mason Farm", "Central Crops Research Station")
+forecast_2061<-forecast_2061[,]-bioclim_1970[,2]; forecast_2061$year<-"2061-2080"; forecast_2061$ubi<-c("Mason Farm", "Central Crops Research Station")
+
+
+#merge all dfs into one: https://dplyr.tidyverse.org/reference/bind.html
+forecast_all<-bind_rows(forecast_2021,forecast_2041,forecast_2061, .id=NULL)
+
+
+#boxplot: https://stackoverflow.com/questions/8510870/boxplot-from-row-values-in-a-dataframe & https://stackoverflow.com/questions/30023610/how-to-plot-2-categorical-variables-on-x-axis-and-two-continuous-variables-as-f
+forecast_all <- melt(forecast_all, id.vars= c("year","ubi")) #no se que hace esto como que cambia la orientación del df
+ggplot(forecast_all, aes(year, value)) + geom_boxplot() +
+  facet_grid(. ~ ubi)+ #mete ubicacion como otra x-axis variable 
+  ylab("deltaT") +
+  xlab("Years") +
+  theme(plot.caption = element_text(hjust = 0.4))+
+  labs(caption = "Boxplot of the temperature difference in years 2021-2040, 2041-2060, and 2061-2080 compared to the years 1970-2000 for each location of interest: 
+  Mason Farm (+35° 53′ 30.40′′, −79° 1′ 5.37′′) and Central Crops Research Station (+35° 39′ 59.22′′, −78° 29′ 35.69′′), both located in North Carolina, USA.
+  Temperature values were extracted from 25 CMIP-6 models available at: https://www.carbonbrief.org/cmip6-the-next-generation-of-climate-models-explained/")
 
